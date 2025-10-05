@@ -4,6 +4,7 @@ import Scoreboard from "../components/Scoreboard";
 import GameHeader from "../components/GameHeader";
 import MultipleChoice from "../components/MultipleChoice";
 import SingleChoice from "../components/SingleChoice";
+import GuessArtistChoice from "../components/GuessArtistChoice";
 import AudioControls from "../components/AudioControls";
 import RoundScoreDisplay from "../components/RoundScoreDisplay";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -38,6 +39,8 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const totalRounds = parseInt(state?.rounds || "10");
   const roundTime = parseInt(state?.guessTime || "30");
   const isSingleSong = state?.gameMode === "Single Song";
+  const isMixedSongs = state?.gameMode === "Mixed Songs";  
+  const isGuessArtist = state?.gameMode === "Guess the Artist";
 
   // --- Round State ---
   const [currentRound, setCurrentRound] = useState(1);
@@ -57,6 +60,10 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const [options, setOptions] = useState<string[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState<string>("");
   const [isTimeUp, setIsTimeUp] = useState(false);
+
+  // --- Guess Artist Mode ---
+  const [hasGuessedArtistCorrectly, setHasGuessedArtistCorrectly] = useState(false);
+  const [currentArtist, setCurrentArtist] = useState<string | null>(null);
 
   // --- Round Control Helpers ---
   const [roundStartTime, setRoundStartTime] = useState<number>(0);
@@ -294,7 +301,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
                   // Optional: Add any logic for wrong guesses
                 }}
               />
-            ) : (
+            ) : isMixedSongs ? (
               <MultipleChoice
                 options={options}
                 onSelect={handleSelect}
@@ -302,7 +309,15 @@ const InGamePage: React.FC<GuessifyProps> = () => {
                 correctAnswer={correctAnswer}
                 showCorrectAnswer={showCorrectAnswer}
               />
-            )}
+            ) : isGuessArtist ? (
+              <GuessArtistChoice
+                onCorrectGuess={handleCorrectGuess}
+                currentSong={currentSong}
+                hasGuessedCorrectly={hasGuessedArtistCorrectly}
+                onWrongGuess={() => {
+                }}
+              />
+            ) : null}
           </div>
         </>
       )}
