@@ -90,7 +90,7 @@ _A real-time multiplayer music guessing game built with Deezer_
    ```
 
 3. **Open your browser**
-   Navigate to `http://localhost:8080`
+   Navigate to `http://localhost:5173`
 
 ### Testing & Deployment
 
