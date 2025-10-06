@@ -85,14 +85,14 @@ const GuessArtistChoice: React.FC<GuessArtistChoiceProps> = ({
 
   return (
     <div className="music-guess-game">
-      {/* Song Title blanks */}
+      {/* Artist name blanks */}
       <div className="artist-label">
         <h1>
           {currentSong ? `ARTIST: ${createBlanks(currentSong.artist)}` : "Loading..."}
         </h1>
       </div>
 
-      {/* Title name */}
+      {/* Song title name */}
       <div className="artist-label artist-label--spacing">
         <h2 className="artist-text">
           {currentSong ? `TITLE: ${currentSong.title}` : ""}

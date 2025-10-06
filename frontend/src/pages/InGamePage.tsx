@@ -63,10 +63,8 @@ const InGamePage: React.FC<GuessifyProps> = () => {
 
   // --- Guess Artist Mode ---
   const [hasGuessedArtistCorrectly, setHasGuessedArtistCorrectly] = useState(false);
-  const [currentArtist, setCurrentArtist] = useState<string | null>(null);
 
   // --- Round Control Helpers ---
-  const [roundStartTime, setRoundStartTime] = useState<number>(0);
   const isRoundStarting = useRef(false);
 
   /* ----------------- HELPER FUNCTIONS ----------------- */
@@ -152,10 +150,19 @@ const InGamePage: React.FC<GuessifyProps> = () => {
 
   // Handle correct guess in single song mode
   const handleCorrectGuess = () => {
-    if (!hasGuessedCorrectly) {
+    const alreadyGuessed = isSingleSong ? hasGuessedCorrectly : isGuessArtist ? hasGuessedArtistCorrectly : false;
+    
+    if (!alreadyGuessed) {
       const points = calculatePoints(timeLeft);
       addPointsToPlayer(points, true); // correct answer count
-      setHasGuessedCorrectly(true);
+      
+      // Set the appropriate state based on game mode
+      if (isSingleSong) {
+        setHasGuessedCorrectly(true);
+      } else if (isGuessArtist) {
+        setHasGuessedArtistCorrectly(true);
+      }
+      
       // Stop the song and go immediately to round score display
       songService.stopSong();
       setIsRoundActive(false);
@@ -231,14 +238,13 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     // Reset round state
     setIsRoundActive(true);
     setTimeLeft(roundTime);
-    setRoundStartTime(Date.now());
     setHasGuessedCorrectly(false);
+    setHasGuessedArtistCorrectly(false);
     setHasSelectedCorrectly(false);
     setShowCorrectAnswer(false);
     setIsTimeUp(false);
-
     // Start playback depending on game mode
-    if (isSingleSong) {
+    if (isSingleSong || isGuessArtist) {
       if (currentRound === 1) songService.playSong();
       else songService.playNextSong();
     } else {
@@ -251,7 +257,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     }
     // Release "starting lock" after 1s
     setTimeout(() => { isRoundStarting.current = false; }, 1000);
-  }, [currentRound, isSingleSong, roundTime]);
+  }, [currentRound, isSingleSong, isGuessArtist, roundTime]);
 
   // Countdown timer logic
   useEffect(() => {
@@ -269,6 +275,63 @@ const InGamePage: React.FC<GuessifyProps> = () => {
 
   /* ----------------- RENDER ----------------- */
 
+  // Helper function to render the appropriate game mode component
+  const renderGameModeComponent = () => {
+    if (isSingleSong) {
+      return (
+        <SingleChoice
+          onCorrectGuess={handleCorrectGuess}
+          currentSong={currentSong}
+          hasGuessedCorrectly={hasGuessedCorrectly}
+          onWrongGuess={() => {
+            // Optional: Add any logic for wrong guesses
+          }}
+        />
+      );
+    }
+
+    if (isMixedSongs) {
+      return (
+        <MultipleChoice
+          options={options}
+          onSelect={handleSelect}
+          selectedIndex={selectedIndex}
+          correctAnswer={correctAnswer}
+          showCorrectAnswer={showCorrectAnswer}
+        />
+      );
+    }
+
+    if (isGuessArtist) {
+      return (
+        <GuessArtistChoice
+          onCorrectGuess={handleCorrectGuess}
+          currentSong={currentSong}
+          hasGuessedCorrectly={hasGuessedArtistCorrectly}
+          onWrongGuess={() => {
+            // Optional: Add any logic for wrong guesses
+          }}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  // Helper function to get the correct answer for round score display
+  const getCorrectAnswerForDisplay = () => {
+    if (isSingleSong) return currentSong?.title;
+    if (isGuessArtist) return currentSong?.artist;
+    return correctAnswer;
+  };
+
+  // Helper function to get whether player got the correct answer
+  const getPlayerCorrectStatus = () => {
+    if (isSingleSong) return hasGuessedCorrectly;
+    if (isGuessArtist) return hasGuessedArtistCorrectly;
+    return hasSelectedCorrectly;
+  };
+
   return (
     <div className="game-2-container">
       <AudioControls />
@@ -279,8 +342,8 @@ const InGamePage: React.FC<GuessifyProps> = () => {
           totalRounds={totalRounds}
           onContinue={handleContinueToNextRound}
           isFinalRound={currentRound === totalRounds}
-          correctAnswer={isSingleSong ? currentSong?.title : correctAnswer}
-          playerGotCorrect={isSingleSong ? hasGuessedCorrectly : hasSelectedCorrectly}
+          correctAnswer={getCorrectAnswerForDisplay()}
+          playerGotCorrect={getPlayerCorrectStatus()}
           isTimeUp={isTimeUp}
         />
       ) : (
@@ -292,32 +355,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
           />
           <div className="game-2-body">
             <Scoreboard players={[player]} />
-            {isSingleSong ? (
-              <SingleChoice
-                onCorrectGuess={handleCorrectGuess}
-                currentSong={currentSong}
-                hasGuessedCorrectly={hasGuessedCorrectly}
-                onWrongGuess={() => {
-                  // Optional: Add any logic for wrong guesses
-                }}
-              />
-            ) : isMixedSongs ? (
-              <MultipleChoice
-                options={options}
-                onSelect={handleSelect}
-                selectedIndex={selectedIndex}
-                correctAnswer={correctAnswer}
-                showCorrectAnswer={showCorrectAnswer}
-              />
-            ) : isGuessArtist ? (
-              <GuessArtistChoice
-                onCorrectGuess={handleCorrectGuess}
-                currentSong={currentSong}
-                hasGuessedCorrectly={hasGuessedArtistCorrectly}
-                onWrongGuess={() => {
-                }}
-              />
-            ) : null}
+            {renderGameModeComponent()}
           </div>
         </>
       )}
