@@ -4,44 +4,46 @@ import PlayIcon from "../assets/Play.png";
 import { songService } from "../services/songServices";
 import type { Song } from "../types/song";
 
-interface SingleChoiceProps {
-  onCorrectGuess: () => void;          // Called when user guesses correctly
-  currentSong: Song | null;            // Current song data
-  hasGuessedCorrectly: boolean;        // Whether the user already guessed right
-  onWrongGuess?: () => void;           // Optional callback for wrong guess
+interface UnifiedChoiceProps {
+  onCorrectGuess: () => void;
+  currentSong: Song | null;
+  hasGuessedCorrectly: boolean;
+  onWrongGuess?: () => void;
+  mode: 'title' | 'artist'; // NEW: Determines what to guess
 }
 
-const SingleChoice: React.FC<SingleChoiceProps> = ({
+const UnifiedChoice: React.FC<UnifiedChoiceProps> = ({
   onCorrectGuess,
   currentSong,
   hasGuessedCorrectly,
   onWrongGuess,
+  mode, // NEW: mode prop
 }) => {
-  const [guess, setGuess] = useState("");              // User input guess
-  const [showWrongMessage, setShowWrongMessage] = useState(false); // Flag to show "wrong" feedback
+  const [guess, setGuess] = useState("");
+  const [showWrongMessage, setShowWrongMessage] = useState(false);
 
-  /** Create a masked version of the title (blanks only, no punctuation/featuring info) */
+  /** Create a masked version of text (blanks only, no punctuation/featuring info) */
   const createBlanks = (text: string): string => {
-    let mainTitle = text
-      .replace(/\s*\([^)]*\)/g, "")   // Remove parentheses content
-      .replace(/\s*feat\.?\s+.*/gi, "") // Remove "feat."
-      .replace(/\s*ft\.?\s+.*/gi, "")   // Remove "ft."
-      .replace(/\s*featuring\s+.*/gi, "") // Remove "featuring"
+    let mainText = text
+      .replace(/\s*\([^)]*\)/g, "")
+      .replace(/\s*feat\.?\s+.*/gi, "")
+      .replace(/\s*ft\.?\s+.*/gi, "")
+      .replace(/\s*featuring\s+.*/gi, "")
       .trim();
 
-    const cleanTitle = mainTitle
-      .replace(/[^\w\s]/g, "")        // Remove punctuation
-      .replace(/\s+/g, " ")           // Normalize spaces
+    const cleanText = mainText
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
       .trim();
 
-    return cleanTitle
+    return cleanText
       .split(" ")
       .filter(Boolean)
-      .map(word => "_".repeat(word.length)) // Replace words with underscores
+      .map(word => "_".repeat(word.length))
       .join("   ");
   };
 
-  /** Normalize a title or guess for comparison */
+  /** Normalize text for comparison */
   const normalizeForComparison = (text: string): string => {
     return text
       .replace(/\s*\([^)]*\)/g, "")
@@ -54,7 +56,6 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({
       .toLowerCase();
   };
 
-  /** Reset input state when song changes when current song changes */
   useEffect(() => {
     setGuess("");
     setShowWrongMessage(false);
@@ -64,42 +65,57 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({
     setGuess(e.target.value);
   };
 
-  /** Check guess against the song title */
+  /** Check guess against the target (title or artist based on mode) */
   const handleSubmitGuess = () => {
     if (!currentSong || hasGuessedCorrectly) return;
 
     const normalizedGuess = normalizeForComparison(guess);
-    const normalizedTitle = normalizeForComparison(currentSong.title);
+    const target = mode === 'title' ? currentSong.title : currentSong.artist;
+    const normalizedTarget = normalizeForComparison(target);
 
-    if (normalizedGuess === normalizedTitle) {
-      onCorrectGuess(); // Correct guess → notify parent
+    if (normalizedGuess === normalizedTarget) {
+      onCorrectGuess();
     } else {
-      setShowWrongMessage(true); // Wrong guess → show message
+      setShowWrongMessage(true);
       onWrongGuess?.();
     }
   };
 
-  /** Allow submitting with Enter key */
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !hasGuessedCorrectly) {
       handleSubmitGuess();
     }
   };
 
+  // Determine what to show and what to blank based on mode
+  const getDisplayContent = () => {
+    if (!currentSong) return { blanked: "Loading...", shown: "" };
+    
+    if (mode === 'title') {
+      return {
+        blanked: `TITLE: ${createBlanks(currentSong.title)}`,
+        shown: `ARTIST: ${currentSong.artist}`,
+      };
+    } else {
+      return {
+        blanked: `ARTIST: ${createBlanks(currentSong.artist)}`,
+        shown: `TITLE: ${currentSong.title}`,
+      };
+    }
+  };
+
+  const { blanked, shown } = getDisplayContent();
+
   return (
     <div className="music-guess-game">
-      {/* Song Title blanks */}
+      {/* Blanked content (what user needs to guess) */}
       <div className="artist-label">
-        <h1>
-          {currentSong ? `TITLE: ${createBlanks(currentSong.title)}` : "Loading..."}
-        </h1>
+        <h1>{blanked}</h1>
       </div>
 
-      {/* Artist name */}
+      {/* Shown content (hint) */}
       <div className="artist-label artist-label--spacing">
-        <h2 className="artist-text">
-          {currentSong ? `ARTIST: ${currentSong.artist}` : ""}
-        </h2>
+        <h2 className="artist-text">{shown}</h2>
       </div>
 
       {/* Play song button */}
@@ -148,4 +164,4 @@ const SingleChoice: React.FC<SingleChoiceProps> = ({
   );
 };
 
-export default SingleChoice;
+export default UnifiedChoice;

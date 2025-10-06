@@ -3,8 +3,7 @@ import "../css/InGamePage.css";
 import Scoreboard from "../components/Scoreboard";
 import GameHeader from "../components/GameHeader";
 import MultipleChoice from "../components/MultipleChoice";
-import SingleChoice from "../components/SingleChoice";
-import GuessArtistChoice from "../components/GuessArtistChoice";
+import UnifiedChoice from "../components/SingleChoice";
 import AudioControls from "../components/AudioControls";
 import RoundScoreDisplay from "../components/RoundScoreDisplay";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -279,7 +278,8 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const renderGameModeComponent = () => {
     if (isSingleSong) {
       return (
-        <SingleChoice
+        <UnifiedChoice
+          mode="title"
           onCorrectGuess={handleCorrectGuess}
           currentSong={currentSong}
           hasGuessedCorrectly={hasGuessedCorrectly}
@@ -304,7 +304,8 @@ const InGamePage: React.FC<GuessifyProps> = () => {
 
     if (isGuessArtist) {
       return (
-        <GuessArtistChoice
+        <UnifiedChoice
+          mode="artist"
           onCorrectGuess={handleCorrectGuess}
           currentSong={currentSong}
           hasGuessedCorrectly={hasGuessedArtistCorrectly}
