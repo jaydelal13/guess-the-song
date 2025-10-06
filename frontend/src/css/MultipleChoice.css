@@ -89,3 +89,36 @@
   background-color: #D32F2F !important;
   color: white !important;
 }
+
+.artist-hint {
+  margin-top: 15px;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.instructions {
+  margin-top: 20px;
+  color: #ccc;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.status-message {
+  margin: 20px 0;
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.status-message.waiting {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border-left: 4px solid #ffc107;
+}
+
+.status-message.ready {
+  background-color: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+  border-left: 4px solid #28a745;
+}

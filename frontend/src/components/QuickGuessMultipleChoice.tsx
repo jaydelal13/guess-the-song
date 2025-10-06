@@ -1,21 +1,23 @@
-import React, { useCallback } from "react";
+import React from "react";
 import "../css/MultipleChoice.css";
 import songIcon from "../assets/song-icon.png";
 
-interface MultipleChoiceProps {
+interface QuickGuessMultipleChoiceProps {
   options: string[];
   onSelect: (index: number) => void;
   selectedIndex: number | null;
   correctAnswer: string;
   showCorrectAnswer: boolean;
+  hasPlayedSnippet: boolean;
 }
 
-const MultipleChoice: React.FC<MultipleChoiceProps> = ({
+const QuickGuessMultipleChoice: React.FC<QuickGuessMultipleChoiceProps> = ({
   options,
   onSelect,
   selectedIndex,
   correctAnswer,
   showCorrectAnswer,
+  hasPlayedSnippet,
 }) => {
   const getButtonClass = (index: number) => {
     let className = "answer-btn";
@@ -38,18 +40,21 @@ const MultipleChoice: React.FC<MultipleChoiceProps> = ({
     return className;
   };
 
-  const handleButtonClick = useCallback(
-    (index: number) => {
-      if (selectedIndex === null) {
-        onSelect(index);
-      }
-    },
-    [selectedIndex, onSelect]
-  );
+  const handleButtonClick = (index: number) => {
+    if (selectedIndex === null && hasPlayedSnippet) {
+      onSelect(index);
+    }
+  };
 
   return (
     <div className="choose-song-container">
-      <h2>SONG:</h2>
+      {!hasPlayedSnippet ? (
+        <div className="status-message waiting">
+          🎵 Get ready! A 3-second snippet will play automatically...
+        </div>
+      ) : (
+        <h2>SONG:</h2>
+      )}
 
       <div className="song-icon">
         <img src={songIcon} alt="Song Icon" />
@@ -62,7 +67,7 @@ const MultipleChoice: React.FC<MultipleChoiceProps> = ({
             type="button"
             className={getButtonClass(index)}
             onClick={() => handleButtonClick(index)}
-            disabled={selectedIndex !== null && selectedIndex !== index}
+            disabled={!hasPlayedSnippet || (selectedIndex !== null && selectedIndex !== index)}
             aria-pressed={selectedIndex === index}
           >
             {`${index + 1}. ${option}`}
@@ -73,4 +78,4 @@ const MultipleChoice: React.FC<MultipleChoiceProps> = ({
   );
 };
 
-export default MultipleChoice;
+export default QuickGuessMultipleChoice;

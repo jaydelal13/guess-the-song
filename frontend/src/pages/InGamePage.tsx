@@ -3,7 +3,8 @@ import "../css/InGamePage.css";
 import Scoreboard from "../components/Scoreboard";
 import GameHeader from "../components/GameHeader";
 import MultipleChoice from "../components/MultipleChoice";
-import UnifiedChoice from "../components/SingleChoice";
+import QuickGuessMultipleChoice from "../components/QuickGuessMultipleChoice";
+import SingleChoice from "../components/SingleChoice";
 import AudioControls from "../components/AudioControls";
 import RoundScoreDisplay from "../components/RoundScoreDisplay";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const isSingleSong = state?.gameMode === "Single Song";
   const isMixedSongs = state?.gameMode === "Mixed Songs";  
   const isGuessArtist = state?.gameMode === "Guess the Artist";
+  const isQuickGuess = state?.gameMode === "Quick Guess";
 
   // --- Round State ---
   const [currentRound, setCurrentRound] = useState(1);
@@ -63,6 +65,9 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   // --- Guess Artist Mode ---
   const [hasGuessedArtistCorrectly, setHasGuessedArtistCorrectly] = useState(false);
 
+  // --- Quick Guess Mode ---
+  const [hasPlayedSnippet, setHasPlayedSnippet] = useState(false);
+
   // --- Round Control Helpers ---
   const isRoundStarting = useRef(false);
 
@@ -73,6 +78,33 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     const all = songService.getCachedSongs();
     const shuffled = [...all].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, num);
+  };
+
+  // Setup Quick Guess mode with single song and multiple choice options
+  const setupQuickGuessMode = () => {
+    const allSongs = songService.getCachedSongs();
+    
+    // Get a random index and the corresponding song
+    const randomIndex = Math.floor(Math.random() * allSongs.length);
+    const chosen = allSongs[randomIndex];
+    
+    // Generate 3 wrong options
+    const wrongOptions = allSongs
+      .filter(song => song.title !== chosen.title)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3)
+      .map(song => song.title);
+    
+    // Mix correct answer with wrong options and shuffle
+    const opts = [chosen.title, ...wrongOptions].sort(() => 0.5 - Math.random());
+    setOptions(opts);
+    setCorrectAnswer(chosen.title);
+    
+    // Play 3-second snippet directly (no initial song playback)
+    setTimeout(async () => {
+      await songService.playQuickSnippet(randomIndex);
+      setHasPlayedSnippet(true);
+    }, 1000);
   };
 
   // Generate multiple choice options including correct answer + distractors
@@ -132,10 +164,13 @@ const InGamePage: React.FC<GuessifyProps> = () => {
       addPointsToPlayer(points, true); // Correct answer count
       setHasSelectedCorrectly(true);
       setShowCorrectAnswer(true);
-      // Stop the song and go immediately to round score display
+      // Stop the song and show feedback before going to round score display
       songService.stopSong();
       setIsRoundActive(false);
-      setIsIntermission(true);
+      // Add delay to show correct/incorrect feedback
+      setTimeout(() => {
+        setIsIntermission(true);
+      }, 1500);
     } else {
       setHasSelectedCorrectly(false);
       setShowCorrectAnswer(true);
@@ -143,13 +178,21 @@ const InGamePage: React.FC<GuessifyProps> = () => {
       setIsTimeUp(false);
       songService.stopSong();
       setIsRoundActive(false);
-      setIsIntermission(true);
+      // Add delay to show correct/incorrect feedback
+      setTimeout(() => {
+        setIsIntermission(true);
+      }, 1500);
     }
   };
 
   // Handle correct guess in single song mode
   const handleCorrectGuess = () => {
-    const alreadyGuessed = isSingleSong ? hasGuessedCorrectly : isGuessArtist ? hasGuessedArtistCorrectly : false;
+    let alreadyGuessed = false;
+    if (isSingleSong) {
+      alreadyGuessed = hasGuessedCorrectly;
+    } else if (isGuessArtist) {
+      alreadyGuessed = hasGuessedArtistCorrectly;
+    }
     
     if (!alreadyGuessed) {
       const points = calculatePoints(timeLeft);
@@ -242,11 +285,16 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     setHasSelectedCorrectly(false);
     setShowCorrectAnswer(false);
     setIsTimeUp(false);
+    setHasPlayedSnippet(false);
+    
     // Start playback depending on game mode
     if (isSingleSong || isGuessArtist) {
       if (currentRound === 1) songService.playSong();
       else songService.playNextSong();
+    } else if (isQuickGuess) {
+      setupQuickGuessMode();
     } else {
+      // Mixed Songs mode
       const chosen = getRandomSongs(3);
       songService.playMultiSong(chosen);
 
@@ -256,7 +304,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     }
     // Release "starting lock" after 1s
     setTimeout(() => { isRoundStarting.current = false; }, 1000);
-  }, [currentRound, isSingleSong, isGuessArtist, roundTime]);
+  }, [currentRound, isSingleSong, isGuessArtist, isQuickGuess, roundTime]);
 
   // Countdown timer logic
   useEffect(() => {
@@ -278,7 +326,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const renderGameModeComponent = () => {
     if (isSingleSong) {
       return (
-        <UnifiedChoice
+        <SingleChoice
           mode="title"
           onCorrectGuess={handleCorrectGuess}
           currentSong={currentSong}
@@ -304,7 +352,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
 
     if (isGuessArtist) {
       return (
-        <UnifiedChoice
+        <SingleChoice
           mode="artist"
           onCorrectGuess={handleCorrectGuess}
           currentSong={currentSong}
@@ -316,6 +364,18 @@ const InGamePage: React.FC<GuessifyProps> = () => {
       );
     }
 
+    if (isQuickGuess) {
+      return (
+        <QuickGuessMultipleChoice
+          options={options}
+          onSelect={handleSelect}
+          selectedIndex={selectedIndex}
+          correctAnswer={correctAnswer}
+          showCorrectAnswer={showCorrectAnswer}
+          hasPlayedSnippet={hasPlayedSnippet}
+        />
+      );
+    }
     return null;
   };
 
@@ -323,14 +383,15 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const getCorrectAnswerForDisplay = () => {
     if (isSingleSong) return currentSong?.title;
     if (isGuessArtist) return currentSong?.artist;
-    return correctAnswer;
+    if (isQuickGuess) return currentSong?.title;
+    return correctAnswer; // For Mixed Songs mode
   };
 
   // Helper function to get whether player got the correct answer
   const getPlayerCorrectStatus = () => {
     if (isSingleSong) return hasGuessedCorrectly;
     if (isGuessArtist) return hasGuessedArtistCorrectly;
-    return hasSelectedCorrectly;
+    return hasSelectedCorrectly; // For Quick Guess and Mixed Songs modes
   };
 
   return (
