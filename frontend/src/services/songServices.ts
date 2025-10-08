@@ -127,8 +127,8 @@ export default class SongService {
     this.stopMultiSong();
   }
 
-  // --- Quick snippet playback (3 seconds only) ---
-  async playQuickSnippet(index: number = this.currentIndex): Promise<void> {
+  // --- Quick snippet playback (flexible duration) ---
+  async playQuickSnippet(index: number = this.currentIndex, duration: number = 3): Promise<void> {
     if (!this.cachedSongs.length) return;
     this.stopSong();
 
@@ -149,18 +149,18 @@ export default class SongService {
       const handleCanPlay = () => {
         this.currentAudio!.removeEventListener('canplay', handleCanPlay);
         
-        // Start from a random position
-        const randomStart = Math.floor(Math.random() * Math.max(0, this.currentAudio!.duration - 3));
+        // Start from a random position (ensure we have enough time for the snippet)
+        const randomStart = Math.floor(Math.random() * Math.max(0, this.currentAudio!.duration - duration));
         this.currentAudio!.currentTime = randomStart;
         
         this.currentAudio!.play().then(() => {
           if (this.onTrackChange) this.onTrackChange(song, this.currentIndex);
           
-          // Stop after 3 seconds and properly clear the audio
+          // Stop after specified duration and properly clear the audio
           setTimeout(() => {
             this.stopSong(); // Use the existing stopSong method for complete cleanup
             resolve();
-          }, 3000);
+          }, duration * 1000);
         }).catch((err) => {
           console.error("Quick snippet playback failed:", err);
           resolve();

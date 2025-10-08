@@ -9,6 +9,7 @@ interface QuickGuessMultipleChoiceProps {
   correctAnswer: string;
   showCorrectAnswer: boolean;
   hasPlayedSnippet: boolean;
+  snippetDuration?: number;
 }
 
 const QuickGuessMultipleChoice: React.FC<QuickGuessMultipleChoiceProps> = ({
@@ -18,6 +19,7 @@ const QuickGuessMultipleChoice: React.FC<QuickGuessMultipleChoiceProps> = ({
   correctAnswer,
   showCorrectAnswer,
   hasPlayedSnippet,
+  snippetDuration = 3,
 }) => {
   const getButtonClass = (index: number) => {
     let className = "answer-btn";
@@ -50,7 +52,7 @@ const QuickGuessMultipleChoice: React.FC<QuickGuessMultipleChoiceProps> = ({
     <div className="choose-song-container">
       {!hasPlayedSnippet ? (
         <div className="status-message waiting">
-          🎵 Get ready! A 3-second snippet will play automatically...
+          🎵 Get ready! A {snippetDuration}-second snippet will play automatically...
         </div>
       ) : (
         <h2>SONG:</h2>

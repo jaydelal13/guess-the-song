@@ -41,7 +41,18 @@ const InGamePage: React.FC<GuessifyProps> = () => {
   const isSingleSong = state?.gameMode === "Single Song";
   const isMixedSongs = state?.gameMode === "Mixed Songs";  
   const isGuessArtist = state?.gameMode === "Guess the Artist";
-  const isQuickGuess = state?.gameMode === "Quick Guess";
+  const isQuickGuess1Sec = state?.gameMode === "Quick Guess - 1 Second";
+  const isQuickGuess3Sec = state?.gameMode === "Quick Guess - 3 Seconds";
+  const isQuickGuess5Sec = state?.gameMode === "Quick Guess - 5 Seconds";
+  const isQuickGuess = isQuickGuess1Sec || isQuickGuess3Sec || isQuickGuess5Sec;
+  
+  // Get the snippet duration based on game mode
+  const getSnippetDuration = () => {
+    if (isQuickGuess1Sec) return 1;
+    if (isQuickGuess3Sec) return 3;
+    if (isQuickGuess5Sec) return 5;
+    return 3; // default
+  };
 
   // --- Round State ---
   const [currentRound, setCurrentRound] = useState(1);
@@ -100,9 +111,10 @@ const InGamePage: React.FC<GuessifyProps> = () => {
     setOptions(opts);
     setCorrectAnswer(chosen.title);
     
-    // Play 3-second snippet directly (no initial song playback)
+    // Play snippet directly with specified duration (no initial song playback)
+    const snippetDuration = getSnippetDuration();
     setTimeout(async () => {
-      await songService.playQuickSnippet(randomIndex);
+      await songService.playQuickSnippet(randomIndex, snippetDuration);
       setHasPlayedSnippet(true);
     }, 1000);
   };
@@ -373,6 +385,7 @@ const InGamePage: React.FC<GuessifyProps> = () => {
           correctAnswer={correctAnswer}
           showCorrectAnswer={showCorrectAnswer}
           hasPlayedSnippet={hasPlayedSnippet}
+          snippetDuration={getSnippetDuration()}
         />
       );
     }
