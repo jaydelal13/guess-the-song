@@ -18,6 +18,7 @@ import {
   generateMixedSongsOptions 
 } from "../utils/gameLogic";
 import { safeSetTimeoutAsync } from "../utils/safeTimers";
+import { secureRandomInt } from "../utils/secureRandom";
 
 interface Player {
   name: string;
@@ -30,9 +31,7 @@ const getTimeAsNumber = (timeStr: string): number => {
   return parseInt(timeStr.replace(' sec', ''));
 };
 
-type Genre = "kpop" | "pop" | "hiphop" | "edm";
 
-interface GuessifyProps {}
 
 const InGamePage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +40,7 @@ const InGamePage: React.FC = () => {
 
   // --- Extract settings safely ---
   const state = location.state 
-  const { playerName, isHost, rounds: totalRounds, guessTime: roundTime, gameMode, genre: Genre } = state;
+  const { playerName, isHost, rounds: totalRounds, guessTime: roundTime } = state;
 
   // --- Player State ---
   const [players, setPlayers] = useState<Player[]>([]);
@@ -135,12 +134,9 @@ const InGamePage: React.FC = () => {
             if (isSingleSong || isGuessArtist) {
               songService.playSong(songIndex);
             } else if (isQuickGuess) {
-              // For quick guess, play the snippet with same delay as host
-              const duration = getSnippetDuration();
-              safeSetTimeoutAsync(async () => {
-                await songService.playQuickSnippet(songIndex, duration);
-                setHasPlayedSnippet(true);
-              }, 1000);
+              // For quick guess, wait for synchronized snippet from host
+              // The snippet will be played via the "play-quick-snippet" socket event
+              console.log("Quick guess mode: waiting for synchronized snippet from host");
             }
           }
         } else if (choices && choices.length > 0) {
@@ -198,12 +194,32 @@ const InGamePage: React.FC = () => {
     });
   });
 
+  // Handle synchronized quick snippet playback for non-host players
+  socket.on("play-quick-snippet", async ({ songIndex, options, duration, startTime }) => {
+    console.log(`Received quick snippet sync: song ${songIndex}, startTime: ${startTime}s`);
+    
+    // Set the options and current song for non-host players
+    setOptions(options);
+    const allSongs = songService.getCachedSongs();
+    if (allSongs[songIndex]) {
+      setCurrentSong(allSongs[songIndex]);
+      setCorrectAnswer(allSongs[songIndex].title);
+    }
+    
+    // Play the snippet with the synchronized start time
+    safeSetTimeoutAsync(async () => {
+      await songService.playQuickSnippet(songIndex, duration, startTime);
+      setHasPlayedSnippet(true);
+    }, 1000);
+  });
+
     return () => {
       socket.off("room-players-scores");
       socket.off("round-start");
       socket.off("score-update");
       socket.off("continue-to-next-round");
       socket.off("navigate-to-end-game");
+      socket.off("play-quick-snippet");
     };
   }, [code, playerName, navigate, roundTime]);
 
@@ -306,10 +322,28 @@ const InGamePage: React.FC = () => {
       setOptions(choices);
       setCorrectAnswer(selectedSong.title);
       
-      // Play the snippet with a delay
+      // For multiplayer: generate random start time and sync with other players
       const snippetDuration = getSnippetDuration();
+      
+      // Generate a random start time (assuming 30 second preview, ensure we have enough time for snippet)
+      const maxStartTime = Math.max(0, 30 - snippetDuration); // Assume 30s preview length
+      const startTime = secureRandomInt(maxStartTime);
+      
+      // For multiplayer host, send sync data immediately and schedule playback
+      if (isHost && socket && code) {
+        // Send sync data to other players immediately
+        socket.emit("sync-quick-snippet", {
+          roomId: code,
+          songIndex: randomIndex,
+          options: choices,
+          duration: snippetDuration,
+          startTime: startTime
+        });
+      }
+      
+      // Play the snippet with synchronized start time (for host) - same timing as other players
       safeSetTimeoutAsync(async () => {
-        await songService.playQuickSnippet(randomIndex, snippetDuration);
+        await songService.playQuickSnippet(randomIndex, snippetDuration, startTime);
         setHasPlayedSnippet(true);
       }, 1000);
       

@@ -120,7 +120,7 @@ export default class SongService {
   }
 
   // --- Quick snippet playback with flexible duration ---
-  async playQuickSnippet(index: number = this.currentIndex, duration: number = 3): Promise<void> {
+  async playQuickSnippet(index: number = this.currentIndex, duration: number = 3, startTime?: number): Promise<void> {
     if (!this.cachedSongs.length) return;
     this.stopSong();
 
@@ -141,9 +141,9 @@ export default class SongService {
       const handleCanPlay = () => {
         this.currentAudio!.removeEventListener('canplay', handleCanPlay);
         
-        // Start from a random position (ensure we have enough time for the snippet)
-        const randomStart = secureRandomInt(Math.max(0, this.currentAudio!.duration - duration));
-        this.currentAudio!.currentTime = randomStart;
+        // Use provided start time or generate random start time
+        const snippetStartTime = startTime ?? secureRandomInt(Math.max(0, this.currentAudio!.duration - duration));
+        this.currentAudio!.currentTime = snippetStartTime;
         
         this.currentAudio!.play().then(() => {
           if (this.onTrackChange) this.onTrackChange(song, this.currentIndex);

@@ -241,6 +241,19 @@ io.on("connection", (socket) => {
     socket.emit("navigate-to-end-game"); // Also send to host
   });
 
+  // Handle quick guess synchronization
+  socket.on("sync-quick-snippet", ({ roomId, songIndex, options, duration, startTime }) => {
+    console.log(`Host syncing quick snippet in room ${roomId} - song ${songIndex}, startTime: ${startTime}s`);
+    
+    // Send to all other players in the room (not the host)
+    socket.to(roomId).emit("play-quick-snippet", { 
+      songIndex, 
+      options, 
+      duration, 
+      startTime 
+    });
+  });
+
   // host starts game event
   socket.on("start-game", ({ code }) => {
     socket.join(code);
